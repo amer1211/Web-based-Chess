@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-ChessApplication<chess>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.chess.ChessApplication",
+            "projectName": "chess",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}

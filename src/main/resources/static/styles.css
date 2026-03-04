@@ -1,0 +1,192 @@
+:root {
+    --square-light: #f0d9b5;
+    --square-dark: #b58863;
+    --square-highlight: #f6f669;
+    --square-move: rgba(0, 0, 0, 0.2);
+    --board-border: #333;
+    --background: #111827;
+    --panel-bg: #111827;
+    --accent: #3b82f6;
+    --accent-hover: #2563eb;
+    --text-main: #f9fafb;
+    --text-muted: #9ca3af;
+    --danger: #ef4444;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: radial-gradient(circle at top, #1f2933 0, #020617 55%);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.app-container {
+    width: min(100vw, 960px);
+    padding: 24px 16px;
+}
+
+.app-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.app-header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    letter-spacing: 0.04em;
+}
+
+.status-message {
+    flex: 1 1 auto;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+}
+
+.primary-button {
+    border: none;
+    border-radius: 999px;
+    padding: 8px 18px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    background: linear-gradient(135deg, var(--accent), #06b6d4);
+    color: white;
+    box-shadow: 0 8px 16px rgba(37, 99, 235, 0.4);
+    transition: background 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease;
+}
+
+.primary-button:hover {
+    background: linear-gradient(135deg, var(--accent-hover), #0891b2);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.5);
+}
+
+.primary-button:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.8);
+}
+
+.board-wrapper {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    justify-content: center;
+}
+
+.board {
+    width: min(80vw, 560px);
+    aspect-ratio: 1 / 1;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    border-radius: 16px;
+    overflow: hidden;
+    border: 4px solid var(--board-border);
+    box-shadow:
+            0 20px 40px rgba(0, 0, 0, 0.8),
+            0 0 0 1px rgba(255, 255, 255, 0.02);
+    background: #111827;
+}
+
+.square {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(2rem, 4.5vw, 3.2rem);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.12s ease, box-shadow 0.12s ease, transform 0.06s ease;
+}
+
+.square.light {
+    background-color: var(--square-light);
+}
+
+.square.dark {
+    background-color: var(--square-dark);
+}
+
+.square:hover {
+    box-shadow: inset 0 0 0 3px rgba(248, 250, 252, 0.3);
+    transform: translateY(-1px);
+}
+
+.square.selected {
+    box-shadow: inset 0 0 0 3px rgba(56, 189, 248, 0.9);
+    background-image: linear-gradient(135deg, rgba(56, 189, 248, 0.35), transparent);
+}
+
+.square.legal-move::after {
+    content: "";
+    position: absolute;
+    width: 40%;
+    height: 40%;
+    border-radius: 999px;
+    background: var(--square-move);
+}
+
+.square.capture-move::after {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border-radius: 999px;
+    border: 3px solid rgba(248, 250, 252, 0.9);
+}
+
+.square .piece {
+    filter: drop-shadow(0 2px 3px rgba(15, 23, 42, 0.7));
+}
+
+.board-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.board-legend .files,
+.board-legend .ranks {
+    display: grid;
+    gap: 2px;
+}
+
+.board-legend .files {
+    grid-template-columns: repeat(8, 1fr);
+    justify-items: center;
+}
+
+.board-legend .ranks {
+    grid-template-rows: repeat(8, 1fr);
+    align-items: center;
+}
+
+.board-legend span {
+    opacity: 0.7;
+}
+
+@media (max-width: 640px) {
+    .board-wrapper {
+        flex-direction: column;
+    }
+
+    .board {
+        width: min(92vw, 480px);
+    }
+}
+
