@@ -109,5 +109,5 @@ java -jar target/chess-1.0.0-SNAPSHOT.jar
 ### License
 
 This project is currently for personal/educational use.  
-Add a license file (e.g. MIT, Apache-2.0) if you plan to share or use it in production.
+
 
