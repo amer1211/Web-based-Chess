@@ -1,35 +1,37 @@
-## Web-based Chess
+# Web-based Chess
 
-Modern web-based chess application with a **Spring Boot REST backend** and a **vanilla HTML/JS frontend**.  
-The backend exposes endpoints to manage game state and legal moves, while the frontend renders an interactive chessboard in the browser.
+A modern web-based chess application with a **Spring Boot REST backend** and a **vanilla HTML/CSS/JS frontend** — no frameworks, no dependencies beyond Java.
 
-### Features
+---
 
-- **Full chess rules**: board representation, legal move calculation, turn management.
-- **REST API**:
-  - `GET /api/game/start` – start a new game and return initial board state.
-  - `GET /api/game/legal-moves?x={file}&y={rank}` – fetch legal moves for a piece.
-  - `POST /api/game/move` – apply a move (with optional promotion) and return updated state.
-- **Web UI**:
-  - Static frontend served from `src/main/resources/static`.
-  - Clickable board, highlighted legal moves, and status messages.
-- **Production‑ready basics**:
-  - Spring Boot 3.2.
-  - Actuator endpoint at `/actuator` for basic health/info.
+## Features
 
-### Tech Stack
+- **Complete chess rules** — legal move generation, check/checkmate/stalemate detection, en passant, castling, pawn promotion
+- **Interactive UI** — click to select pieces, highlighted legal moves, capture indicators, last-move highlight
+- **Pawn promotion dialog** — modal popup with all four promotion choices, correctly coloured per side
+- **REST API** — clean JSON endpoints for game state, legal moves, and move execution
+- **Zero frontend dependencies** — pure HTML, CSS, and vanilla JavaScript; no build step required
 
-- **Backend**: Java 17, Spring Boot 3.2, Maven.
-- **Frontend**: HTML, CSS, vanilla JavaScript.
+---
 
-### Getting Started
+## Tech Stack
 
-#### Prerequisites
+| Layer     | Technology                        |
+|-----------|-----------------------------------|
+| Backend   | Java 17, Spring Boot 3.2, Maven   |
+| Frontend  | HTML5, CSS3, Vanilla JavaScript   |
+| API style | REST / JSON                       |
 
-- Java **17** or later installed (`java -version`).
-- Maven **3.8+** installed (`mvn -v`).
+---
 
-#### Clone and run
+## Getting Started
+
+### Prerequisites
+
+- **Java 17+** — verify with `java -version`
+- **Maven 3.8+ or 4.x** — verify with `mvn -v`
+
+### Run (Linux / macOS / Git Bash)
 
 ```bash
 git clone https://github.com/amer1211/Web-based-Chess.git
@@ -37,77 +39,109 @@ cd Web-based-Chess
 mvn spring-boot:run
 ```
 
-Once the application has started, open your browser at:
+### Run (Windows PowerShell)
 
-- **UI**: `http://localhost:8080/`
-- **Actuator**: `http://localhost:8080/actuator`
+```powershell
+git clone https://github.com/amer1211/Web-based-Chess.git
+cd Web-based-Chess
 
-### API Overview
+# If Maven is in a path with spaces (e.g. C:\Program Files\...) use & and quotes:
+& "C:\Program Files\apache-maven-4.0.0-rc-5\bin\mvn" spring-boot:run
+```
 
-- **Start a new game**
+Once started, open your browser at **http://localhost:8080**
 
-  `GET /api/game/start`
+---
 
-  Returns the initial board state and game metadata as JSON.
+## REST API
 
-- **Get legal moves**
+### Start a new game
 
-  `GET /api/game/legal-moves?x={file}&y={rank}`
+```
+GET /api/game/start
+```
 
-  - `x`: file index (0–7, typically a–h).
-  - `y`: rank index (0–7, typically 8–1).
+Returns the initial board state and game metadata.
 
-- **Make a move**
+### Get legal moves for a piece
 
-  `POST /api/game/move`
+```
+GET /api/game/legal-moves?x={file}&y={rank}
+```
 
-  Example request body:
+| Parameter | Type | Description                          |
+|-----------|------|--------------------------------------|
+| `x`       | int  | File index — 0 (a) to 7 (h)         |
+| `y`       | int  | Rank index — 0 (rank 8) to 7 (rank 1)|
 
-  ```json
-  {
-    "start": { "x": 4, "y": 6 },
-    "end": { "x": 4, "y": 4 },
-    "promotion": "QUEEN"
-  }
-  ```
+### Make a move
 
-### Project Structure
+```
+POST /api/game/move
+Content-Type: application/json
+```
 
-- `src/main/java/com/chess`
-  - `ChessApplication` – Spring Boot entry point.
-  - `controller/ChessController` – REST API endpoints.
-  - `service/GameService` – high-level game operations.
-  - `model/*` – core chess domain (board, pieces, moves, engine).
-  - `dto/*` – data transfer objects used by the API.
-- `src/main/resources/static`
-  - `index.html` – main chess UI.
-  - `app.js` – frontend logic for rendering and interaction.
-  - `styles.css` – board and layout styling.
+```json
+{
+  "start":     { "x": 4, "y": 6 },
+  "end":       { "x": 4, "y": 4 },
+  "promotion": "QUEEN"
+}
+```
 
-### Building a JAR
+`promotion` is optional — only required when a pawn reaches the back rank.
+Valid values: `QUEEN`, `ROOK`, `BISHOP`, `KNIGHT`.
 
-To build an executable JAR:
+---
+
+## Project Structure
+
+```
+src/
+└── main/
+    ├── java/com/chess/
+    │   ├── ChessApplication.java          # Spring Boot entry point
+    │   ├── controller/ChessController.java # REST endpoints
+    │   ├── service/
+    │   │   ├── GameService.java            # Game lifecycle & move handling
+    │   │   └── BoardMapper.java            # Board model → DTO conversion
+    │   ├── model/                          # Core chess domain
+    │   │   ├── Board.java, GameEngine.java, Move.java
+    │   │   ├── Piece.java (abstract)
+    │   │   └── Pawn, Rook, Knight, Bishop, Queen, King
+    │   └── dto/                            # API data transfer objects
+    │       ├── BoardStateDto.java
+    │       ├── GameResponseDto.java
+    │       ├── LegalMovesResponseDto.java
+    │       ├── MoveRequestDto.java
+    │       └── CoordinateDto.java
+    └── resources/static/                  # Frontend (served by Spring Boot)
+        ├── index.html
+        ├── app.js
+        └── styles.css
+```
+
+---
+
+## Building an Executable JAR
 
 ```bash
 mvn clean package
-```
-
-Then run:
-
-```bash
 java -jar target/chess-1.0.0-SNAPSHOT.jar
 ```
 
-### Contributing
+---
 
-1. Fork the repository.
-2. Create a feature branch: `git checkout -b feature/my-change`.
-3. Commit your changes: `git commit -m "Describe my change"`.
-4. Push the branch: `git push origin feature/my-change`.
-5. Open a Pull Request.
+## Contributing
 
-### License
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/my-change`
+3. Commit your changes: `git commit -m "feat: describe my change"`
+4. Push the branch: `git push origin feature/my-change`
+5. Open a Pull Request
 
-This project is currently for personal/educational use.  
+---
 
+## License
 
+This project is for personal and educational use.

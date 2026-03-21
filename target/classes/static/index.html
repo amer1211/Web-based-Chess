@@ -8,28 +8,40 @@
 </head>
 <body>
 <div class="app-container">
+
     <header class="app-header">
-        <h1>Chess</h1>
-        <div id="game-status" class="status-message">Loading...</div>
-        <button id="new-game-btn" class="primary-button" type="button">New Game</button>
+        <span class="app-logo">♟</span>
+        <h1 class="app-title">Chess</h1>
+        <div id="game-status" class="status-badge">Loading…</div>
+        <button id="new-game-btn" class="btn-new-game" type="button">New Game</button>
     </header>
 
-    <main class="board-wrapper">
-        <div id="chessboard" class="board" aria-label="Chess board"></div>
-        <div class="board-legend">
-            <div class="files">
-                <span>a</span><span>b</span><span>c</span><span>d</span>
-                <span>e</span><span>f</span><span>g</span><span>h</span>
-            </div>
-            <div class="ranks">
+    <main class="board-area">
+        <div class="board-frame">
+            <div class="rank-labels" aria-hidden="true">
                 <span>8</span><span>7</span><span>6</span><span>5</span>
                 <span>4</span><span>3</span><span>2</span><span>1</span>
             </div>
+            <div class="board-column">
+                <div id="chessboard" class="board" role="grid" aria-label="Chess board"></div>
+                <div class="file-labels" aria-hidden="true">
+                    <span>a</span><span>b</span><span>c</span><span>d</span>
+                    <span>e</span><span>f</span><span>g</span><span>h</span>
+                </div>
+            </div>
         </div>
     </main>
+
+</div>
+
+<!-- Pawn promotion dialog -->
+<div id="promotion-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Choose promotion piece">
+    <div class="modal-card">
+        <p class="modal-title">Promote Pawn</p>
+        <div class="promotion-choices" id="promotion-choices"></div>
+    </div>
 </div>
 
 <script src="app.js" defer></script>
 </body>
 </html>
-

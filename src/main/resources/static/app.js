@@ -1,214 +1,222 @@
 (() => {
   const API_BASE = '/api/game';
 
-  const boardElement = document.getElementById('chessboard');
-  const statusElement = document.getElementById('game-status');
-  const newGameButton = document.getElementById('new-game-btn');
+  const boardEl          = document.getElementById('chessboard');
+  const statusEl         = document.getElementById('game-status');
+  const newGameBtn       = document.getElementById('new-game-btn');
+  const promotionModal   = document.getElementById('promotion-modal');
+  const promotionChoices = document.getElementById('promotion-choices');
 
-  /** Current client-side selection state */
-  let selected = null; // { x, y } or null
-  let legalDestinations = []; // array of { x, y }
-  let lastBoardState = null; // BoardStateDto-like object from API
+  let selected         = null;  // { x, y } or null
+  let legalDests       = [];    // [{ x, y }, ...]
+  let lastBoardState   = null;
+  let lastMove         = null;  // { start: {x,y}, end: {x,y} } — for highlighting
+  let pendingPromotion = null;  // { start, end } while modal is open
 
-  function codeToUnicode(code) {
-    switch (code) {
-      case 'wP': return '♙';
-      case 'wR': return '♖';
-      case 'wN': return '♘';
-      case 'wB': return '♗';
-      case 'wQ': return '♕';
-      case 'wK': return '♔';
-      case 'bP': return '♟';
-      case 'bR': return '♜';
-      case 'bN': return '♞';
-      case 'bB': return '♝';
-      case 'bQ': return '♛';
-      case 'bK': return '♚';
-      default: return '';
-    }
-  }
+  // Unicode symbols — white pieces (hollow) and black pieces (filled).
+  // We fix the color via CSS .piece.white / .piece.black, NOT by symbol choice.
+  const UNICODE = {
+    wP: '♙', wR: '♖', wN: '♘', wB: '♗', wQ: '♕', wK: '♔',
+    bP: '♟', bR: '♜', bN: '♞', bB: '♝', bQ: '♛', bK: '♚',
+  };
 
-  function isDestination(x, y) {
-    return legalDestinations.some(m => m.x === x && m.y === y);
-  }
+  // Promotion piece sets for the modal (type key → Unicode symbol)
+  const PROMOTE_WHITE = [['QUEEN','♕'], ['ROOK','♖'], ['BISHOP','♗'], ['KNIGHT','♘']];
+  const PROMOTE_BLACK = [['QUEEN','♛'], ['ROOK','♜'], ['BISHOP','♝'], ['KNIGHT','♞']];
+
+  /* ── helpers ──────────────────────────────────────────────────────────── */
+
+  const isDest     = (x, y) => legalDests.some(m => m.x === x && m.y === y);
+  const isLastMove = (x, y) =>
+    lastMove &&
+    ((lastMove.start.x === x && lastMove.start.y === y) ||
+     (lastMove.end.x   === x && lastMove.end.y   === y));
+
+  /**
+   * White pawns start at y=6, move toward y=0 (Black's back rank).
+   * Black pawns start at y=1, move toward y=7 (White's back rank).
+   */
+  const isPawnPromotion = (code, endY) =>
+    (code === 'wP' && endY === 0) ||
+    (code === 'bP' && endY === 7);
+
+  /* ── rendering ────────────────────────────────────────────────────────── */
 
   function renderBoard(boardState) {
-    if (!boardState || !boardState.squares) {
-      return;
-    }
+    if (!boardState?.squares) return;
     lastBoardState = boardState;
-    boardElement.innerHTML = '';
+    boardEl.innerHTML = '';
 
-    // The backend uses y=0 as Black's back rank, y=7 as White's back rank.
-    // Render with White at the bottom: display rows 7 down to 0.
+    // y=7 is White's back rank → render it at the bottom (displayRow 7 → 0)
     for (let displayRow = 7; displayRow >= 0; displayRow--) {
       const y = displayRow;
       for (let x = 0; x < 8; x++) {
-        const code = boardState.squares[y][x] || '';
+        const code   = boardState.squares[y][x] || '';
         const square = document.createElement('div');
-        square.classList.add('square');
 
-        const isDark = (x + y) % 2 === 1;
-        square.classList.add(isDark ? 'dark' : 'light');
+        square.classList.add('square', (x + y) % 2 === 1 ? 'dark' : 'light');
+        square.dataset.x = x;
+        square.dataset.y = y;
 
-        square.dataset.x = String(x);
-        square.dataset.y = String(y);
-
-        if (selected && selected.x === x && selected.y === y) {
-          square.classList.add('selected');
-        }
-
-        if (isDestination(x, y)) {
-          const hasPiece = !!code;
-          square.classList.add(hasPiece ? 'capture-move' : 'legal-move');
-        }
+        if (selected?.x === x && selected?.y === y) square.classList.add('selected');
+        if (isLastMove(x, y))                        square.classList.add('last-move');
+        if (isDest(x, y))    square.classList.add(code ? 'capture-move' : 'legal-move');
 
         if (code) {
-          const pieceSpan = document.createElement('span');
-          pieceSpan.classList.add('piece');
-          pieceSpan.textContent = codeToUnicode(code);
-          square.appendChild(pieceSpan);
+          const piece = document.createElement('span');
+          // *** BUG FIX: assign team-specific CSS class for explicit colouring ***
+          piece.classList.add('piece', code[0] === 'w' ? 'white' : 'black');
+          piece.textContent = UNICODE[code] ?? '';
+          square.appendChild(piece);
         }
 
         square.addEventListener('click', onSquareClick);
-        boardElement.appendChild(square);
+        boardEl.appendChild(square);
       }
     }
   }
 
   function renderStatus(state) {
+    statusEl.className = 'status-badge';
     if (!state) {
-      statusElement.textContent = 'Loading...';
+      statusEl.textContent = 'Loading…';
       return;
     }
-
     if (state.gameOver) {
       if (state.checkmate) {
-        statusElement.textContent = state.message || 'Checkmate!';
-        statusElement.style.color = 'var(--danger)';
-      } else if (state.stalemate) {
-        statusElement.textContent = state.message || 'Stalemate.';
-        statusElement.style.color = 'var(--text-muted)';
+        statusEl.textContent = state.message || 'Checkmate!';
+        statusEl.classList.add('status-danger');
       } else {
-        statusElement.textContent = state.message || 'Game over.';
-        statusElement.style.color = 'var(--text-muted)';
+        statusEl.textContent = state.message || 'Stalemate.';
+        statusEl.classList.add('status-muted');
       }
     } else {
-      statusElement.textContent = state.whiteTurn ? "White's Turn" : "Black's Turn";
-      statusElement.style.color = 'var(--text-main)';
+      const who = state.whiteTurn ? 'White' : 'Black';
+      statusEl.textContent = `${who}'s Turn`;
+      statusEl.classList.add(state.whiteTurn ? 'status-white' : 'status-black');
     }
   }
+
+  /* ── API helpers ──────────────────────────────────────────────────────── */
 
   async function fetchJson(url, options) {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || `Request failed with status ${response.status}`);
-    }
-    return response.json();
+    const res = await fetch(url, options);
+    if (!res.ok) throw new Error((await res.text()) || `HTTP ${res.status}`);
+    return res.json();
   }
 
+  /* ── game actions ─────────────────────────────────────────────────────── */
+
   async function startNewGame() {
+    selected = null; legalDests = []; lastMove = null;
     try {
-      selected = null;
-      legalDestinations = [];
       const state = await fetchJson(`${API_BASE}/start`);
       renderBoard(state.board);
       renderStatus(state);
     } catch (err) {
       console.error(err);
-      statusElement.textContent = 'Failed to start new game.';
+      statusEl.textContent = 'Failed to start game.';
     }
   }
 
-  async function onSquareClick(event) {
-    const target = event.currentTarget;
-    const x = parseInt(target.dataset.x, 10);
-    const y = parseInt(target.dataset.y, 10);
+  async function onSquareClick(e) {
+    const sq = e.currentTarget;
+    const x  = +sq.dataset.x;
+    const y  = +sq.dataset.y;
 
-    // If there is already a selection and the user clicks a legal destination,
-    // attempt to perform the move.
-    if (selected && isDestination(x, y)) {
-      await performMove(selected, { x, y });
-      return;
+    if (selected && isDest(x, y)) {
+      const code = lastBoardState.squares[selected.y][selected.x];
+      if (isPawnPromotion(code, y)) {
+        openPromotionModal(selected, { x, y }, code[0] === 'w');
+      } else {
+        await performMove(selected, { x, y });
+      }
+    } else {
+      await selectSquare(x, y);
     }
-
-    // Otherwise, treat it as a (re)selection.
-    await selectSquare(x, y);
   }
 
   async function selectSquare(x, y) {
-    if (!lastBoardState || !lastBoardState.squares) {
-      return;
-    }
-
+    if (!lastBoardState?.squares) return;
     const code = lastBoardState.squares[y][x];
     if (!code) {
-      // Clicking an empty square clears selection.
-      selected = null;
-      legalDestinations = [];
+      selected = null; legalDests = [];
       renderBoard(lastBoardState);
       return;
     }
-
     try {
-      const movesDto = await fetchJson(`${API_BASE}/legal-moves?x=${x}&y=${y}`);
-      const moves = Array.isArray(movesDto.moves) ? movesDto.moves : [];
-      if (moves.length === 0) {
-        // No legal moves for this piece.
-        selected = null;
-        legalDestinations = [];
-      } else {
-        selected = { x, y };
-        legalDestinations = moves.map(m => ({ x: m.x, y: m.y }));
-      }
+      const dto   = await fetchJson(`${API_BASE}/legal-moves?x=${x}&y=${y}`);
+      const moves = Array.isArray(dto.moves) ? dto.moves : [];
+      selected  = moves.length ? { x, y } : null;
+      legalDests = moves.map(m => ({ x: m.x, y: m.y }));
       renderBoard(lastBoardState);
     } catch (err) {
       console.error(err);
-      statusElement.textContent = 'Failed to retrieve legal moves.';
+      statusEl.textContent = 'Failed to fetch legal moves.';
     }
   }
 
-  async function performMove(start, end) {
+  async function performMove(start, end, promotion) {
     try {
       const payload = {
-        start: { x: start.x, y: start.y },
-        end: { x: end.x, y: end.y }
-        // promotion can be added here later if you implement UI for it
+        start,
+        end,
+        ...(promotion ? { promotion } : {}),
       };
-
       const state = await fetchJson(`${API_BASE}/move`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
       });
-
-      selected = null;
-      legalDestinations = [];
-
+      lastMove   = { start, end };
+      selected   = null;
+      legalDests = [];
       renderBoard(state.board);
       renderStatus(state);
     } catch (err) {
       console.error(err);
-      statusElement.textContent = err.message || 'Illegal move.';
-      // Keep current selection and legal moves so the user can try another move.
+      statusEl.textContent = err.message || 'Illegal move.';
     }
   }
 
-  async function init() {
-    newGameButton.addEventListener('click', () => {
-      startNewGame();
-    });
+  /* ── promotion modal ──────────────────────────────────────────────────── */
 
-    await startNewGame();
+  function openPromotionModal(start, end, isWhite) {
+    pendingPromotion    = { start, end };
+    promotionChoices.innerHTML = '';
+    const pieces = isWhite ? PROMOTE_WHITE : PROMOTE_BLACK;
+    for (const [type, symbol] of pieces) {
+      const btn = document.createElement('button');
+      btn.className   = `promotion-btn ${isWhite ? 'white' : 'black'}`;
+      btn.textContent = symbol;
+      btn.title       = type;
+      btn.addEventListener('click', () => {
+        closePromotionModal();
+        performMove(pendingPromotion.start, pendingPromotion.end, type);
+      });
+      promotionChoices.appendChild(btn);
+    }
+    promotionModal.classList.remove('hidden');
+  }
+
+  function closePromotionModal() {
+    promotionModal.classList.add('hidden');
+    pendingPromotion = null;
+  }
+
+  /* ── init ─────────────────────────────────────────────────────────────── */
+
+  function init() {
+    newGameBtn.addEventListener('click', startNewGame);
+    promotionModal.addEventListener('click', e => {
+      if (e.target === promotionModal) closePromotionModal();
+    });
+    startNewGame();
   }
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
-    init().catch(console.error);
+    init();
   }
 })();
-
